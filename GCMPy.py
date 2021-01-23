@@ -6,8 +6,8 @@ Created on Wed January 20, 2021
 
 import math
 import random
-%matplotlib inline
 import matplotlib.pyplot as plt
+#%matplotlib inline
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
@@ -35,8 +35,8 @@ def HzToBark(cloud,formants):
     # For each formant listed, make a copy of the column prefixed with z
     for formant in formants:
         for ch in formant:
-        if ch.isnumeric():
-            num=ch
+            if ch.isnumeric():
+                num=ch
         formantchar = (formant.split(num)[0])
         name = str(formant).replace(formantchar,'z')
         # Convert each value from Hz to Bark
@@ -208,7 +208,7 @@ def probs(bigdf,cats):
     return prs
     
 
-    def choose(pr,test,cats,runnerup=False):
+def choose(pr,test,cats,runnerup=False):
     '''
     Chooses a label for each category which the stimulus will be categorized as.
     Returns the test/stimulus dataframe with added columns showing what was 
@@ -231,9 +231,6 @@ def probs(bigdf,cats):
         will also be included in the dataframe. Defaults to False. 
     
     '''
-    
-    
-    
     newtest = test.copy()
 
     for cat in cats:
@@ -535,25 +532,7 @@ def accplot(acc,cat):
     plt.show()
     return pl
 
-def multiaccplot(choices,cats):
-    '''
-    Plots accuracy of multiple categories
-    
-    Required parameters:
-    
-    choices = output of choose() function: the test/stimulus dataframe with added columns showing what was 
-        chosen for a category and with what probability.
-    
-    cats = a list of strings containing at least one item, indicating which
-        categories probability was calculated for (e.g. ['vowel','gender']).
-        Items should match the name of columns in the data frame
-    '''
-    accuracy = checkaccuracy(choices,cats)
-    for cat in cats:
-        proportion = propcorr(accuracy,cat)
-        accplot(proportion,cat,accuracy)
-        print(proportion)
-        
+
 def confusion(choices,cats):
     '''
     Returns a confusion matrix comparing intended category with categorization.
@@ -569,6 +548,6 @@ def confusion(choices,cats):
     '''
     matrices={}
     for cat in cats:
-        matrices[cat]=pd.crosstab(choices[cat],choices[cat+'Choice'],normalize='index').round(2).rename_axis(None)
+        matrices[cat]=pd.crosstab(choices[cat],choices[cat+'Choice'], normalize='index').round(2).rename_axis(None)
     return matrices
 
