@@ -373,6 +373,17 @@ def activplot(a,x,y,cat, test):
     Required parameters:
     
     a = DataFrame produced by getactiv() function. Contains a row for each exemplar
+    
+    x = String. Dimension to be plotted as x axis in scatterplot (e.g., F2). Matches
+        the name of a column in the activation DataFrame.
+    
+    y = String. Dimension to be plotted as y axis in scatterplot (e.g., F1). Matches
+        the name of a column in the activation DataFrame.
+    
+    cat = String. Category used to color code exemplars in scatter plot. Matches the name
+        of a column in the activation DataFrame.
+    
+    test = name of test exemplar, one row of a DataFrame.
         
     """
     
