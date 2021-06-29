@@ -190,9 +190,9 @@ def bias_N(exemplars, cat, catbias):
     '''
     
     def bias_N(exemplars, cat, catbias, N=1): 
-    extemp = exemplars.copy()
-    extemp['N'] = N 
-    extemp['N'] = extemp['N'] * extemp[cat].map(catbias)
+        extemp = exemplars.copy()
+        extemp['N'] = N 
+        extemp['N'] = extemp['N'] * extemp[cat].map(catbias)
     return extemp
 
 
