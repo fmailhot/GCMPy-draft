@@ -167,8 +167,34 @@ def reset_N(exemplars, N=1):      # Add or override N, default to 1
     N = integer indicating the base activation value to be added to
         each exemplar (row) in the dataframe. Defaults to 1
     '''
-    exemplars['N'] = N
-    return exemplars
+    extemp = exemplars.copy()
+    extemp['N'] = N
+    return extemp
+
+def bias_N(exemplars, cat, catbias):
+    '''
+    Adds or overwrites an N (base activation) colummn to the exemplar 
+    cloud so that activation with respect to the stimulus can be 
+    calculated. Unlike reset_N, which assigns the same N value to all exemplars,
+    bias_N will set N values according to values in a dictionary. That is, within a 
+    category type, each category will have the N value specified in the dictionary
+    
+    Required parameters:
+    
+    exemplars = dataframe of exemplars to which the stimulus is being compared
+    
+    cat = a string designating the category type which is being primed
+    
+    catbias = dictionary with categories (e.g. vowels) as keys and N value for the  
+        category as values
+    '''
+    
+    def bias_N(exemplars, cat, catbias, N=1): 
+    extemp = exemplars.copy()
+    extemp['N'] = N 
+    extemp['N'] = extemp['N'] * extemp[cat].map(catbias)
+    return extemp
+
 
 def probs(bigdf,cats):
     
@@ -448,6 +474,70 @@ def multicat(testset,cloud,cats,dims,c,exclude_self=True,alsoexclude=None, N=1, 
         bigdf=activation(test,exemplars,dims = dims,c=c)
         pr=probs(bigdf,cats)
         choices = choose(pr,test,cats,runnerup=runnerup)
+        choicelist.append(choices)
+    choices=pd.concat(choicelist, ignore_index=True)
+    return choices
+
+def multicatprime(testset,cloud,cats,dims,c,cat,catbias,exclude_self=True,alsoexclude=None):
+    '''
+    Categorizes a dataframe of multiple stimuli based on functions defined in library, 
+    much like multicat(), but rather than assigning one N value, use a dictionary of
+    category biases to assign N based on category membership.
+    
+    1. Exclude any desired stimuli
+    2. Add N value according to cat biases 
+    3. Calculate activation
+    4. Calculate probabilities
+    5. Choose labels for each category
+    Returns the output of choose(): test/stimulus dataframe with added columns showing what was 
+    chosen for a category and with what probability
+    
+    Required parameters:
+    
+    testset = a dataframe with one or more rows, each a stimulus to be categorized
+        must have columns matching those given in the 'dims' dict. These columns
+        should be dimensions of the stimulus (e.g., formants)
+        
+    cloud = A dataframe of stored exemplars which every stimulus is compared to. 
+        Each row is an exemplar, which, like testset should have columns matching
+        those in the dims dict
+        
+    cats = a list of strings containing at least one item, indicating which
+        categories probability should be calculated for (e.g. ['vowel','gender']).
+        Items should match the name of columns in the data frame
+        
+    dims = a dictionary with dimensions as keys and weights, w, as values. 
+    
+    c = an integer representing exemplar sensitivity. Defaults to .01. 
+    
+    cat = a string designating the category type which is being primed
+    
+    catbias = dictionary with categories (e.g. vowels) as keys and N value for the  
+        category as values
+    
+    exclude_self = boolean. If True, stimulus will be removed from exemplar cloud
+        so that it isn't compared to itself. Defaults to True 
+        
+    Optional parameters:
+    alsoexclude = a list of strings matching columns in the cloud (categories) to exclude 
+        if value is the same as that of the test. (E.g., to exclude all exemplars from
+        the speaker to simulate categorization of novel speaker)
+    
+    N = integer indicating the base activation value to be added to
+        each exemplar (row) in the dataframe. Defaults to 1
+        
+    runnerup = boolean; when true the label with the second highest probability
+        will also be included in the dataframe. Defaults to False.
+    '''
+    choicelist=[]
+    for ix in list(testset.index.values):
+        test = testset.loc[[ix,]]
+        exemplars=exclude(cloud,test,exclude_self=exclude_self,alsoexclude=alsoexclude)
+        # unlike multicat, which uses reset_N, here use bias_N 
+        exemplars = bias_N(exemplars,cat,catbias)
+        bigdf=activation(test,exemplars,dims = dims,c=c)
+        pr=probs(bigdf,cats)
+        choices = choose(pr,test,cats)
         choicelist.append(choices)
     choices=pd.concat(choicelist, ignore_index=True)
     return choices
