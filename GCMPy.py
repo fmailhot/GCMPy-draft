@@ -188,11 +188,9 @@ def bias_N(exemplars, cat, catbias):
     catbias = dictionary with categories (e.g. vowels) as keys and N value for the  
         category as values
     '''
-    
-    def bias_N(exemplars, cat, catbias, N=1): 
-        extemp = exemplars.copy()
-        extemp['N'] = N 
-        extemp['N'] = extemp['N'] * extemp[cat].map(catbias)
+ 
+    extemp = exemplars.copy()
+    extemp['N'] = extemp[cat].map(catbias)
     return extemp
 
 
@@ -221,8 +219,12 @@ def probs(bigdf,cats):
     
     # Loop over every category in the list of categories
     for cat in cats: 
-        # make that category match the exemplar category in name
-        label = cat+'_ex'
+        if cat in bigdf:
+            label = cat
+        else: 
+            # make category match the exemplar category in name if i and j share column names
+            label = cat+'_ex'
+            
         # Sum up activation for every label within that category
         cat_a = bigdf.groupby(label).a.sum()
         # Divide the activation for each label by the total activation for that category
@@ -470,7 +472,7 @@ def multicat(testset,cloud,cats,dims,c,exclude_self=True,alsoexclude=None, N=1, 
     for ix in list(testset.index.values):
         test = testset.loc[[ix,]]
         exemplars=exclude(cloud,test,exclude_self=exclude_self,alsoexclude=alsoexclude)
-        reset_N(exemplars,N=N)
+        exemplars=reset_N(exemplars,N=N)
         bigdf=activation(test,exemplars,dims = dims,c=c)
         pr=probs(bigdf,cats)
         choices = choose(pr,test,cats,runnerup=runnerup)
@@ -652,3 +654,120 @@ def confusion(choices,cats):
         matrices[cat]=pd.crosstab(choices[cat],choices[cat+'Choice'], normalize='index').round(2).rename_axis(None)
     return matrices
 
+def errorfunc(x, testset, cloud, dimslist, cat):
+    ''' 
+    Returns a proportion representing the total amount of error for a single category that
+    the categorizer makes given a certain set of c and w values. This is intended to
+    be used with an optimization function so that the total amount of error can be 
+    minimized; that is, the accuracy can be maximized. 
+    Note that z0 is automatically set to 1.
+    
+    Required parameters: 
+    
+    x = a vector of values to be used by multicat. x[0] should be c, x[1], x[2], x[3]
+        should correspond to dimslist[1], dimslist[2], dimslist[3]
+        
+    testset = a dataframe with one or more rows, each a stimulus to be categorized
+        must have columns matching those given in the dims list. These columns
+        should be dimensions of the stimulus (e.g., formants)
+        
+    cloud = A dataframe of stored exemplars which every stimulus is compared to. 
+        Each row is an exemplar, which, like testset should have columns matching
+        those in the dims list
+    
+    dimslist = a list of dimensions (e.g., formants), for which weights w should be given,
+        and along which exemplars should be compared.
+    
+    cat = the category, 
+        
+    
+    '''
+    #x = [c,z1,z2,z3]
+    catlist=[cat]
+    c=x[0]
+    dimsdict={dimslist[0]:1,dimslist[1]:x[1],dimslist[2]:x[2],dimslist[3]:x[3]}
+    choices=multicat(cloud,testset,catlist,dims=dimsdict,c=c)
+    accuracy=checkaccuracy(choices,catlist)
+    err = accuracy[cat+'Acc'].value_counts(normalize=True)['n']
+    return err
+
+def continuum (data, start, end, dimslist, steps=7):
+    '''
+    Returns a continuum dataframe with interpolated values
+    from a start to end value with a given number of steps
+    
+    Required parameters:
+    
+    data = DataFrame, designed to be result of gp.datasummary, with one result
+    
+    start = Dictionary indicating properties of the desired start
+        with category types as keys, and their desired category as values
+    
+    end = Dictionary indicating properties of the desired start
+        with category types as keys, and their desired category as values
+        
+    dimslist = list containing the names of dimensions to be interpolated
+    
+    Optional parameters: 
+    
+    steps = integer indicating the total number of continuum steps. Defaults to 7.
+    '''
+    # create a copy of the entire df to subset according to conditions
+    # match category to value from dictionary, subset
+    # repeat subsetting until all conditions are satisfied
+    st=data
+    for i in range(0,len(start)):
+        cat = list(start.keys())[i]
+        val = list(start.values())[i]
+        condition = st[cat]==val
+        st = st.loc[condition].reset_index()
+
+    en=data
+    for i in range(0,len(end)):
+        cat = list(end.keys())[i]
+        val = list(end.values())[i]
+        condition = en[cat]==val
+        en = pd.DataFrame(en.loc[condition]).reset_index()
+    
+    norms = {}
+    for dim in dimslist:                      # Calculate the difference between start and end for each dim
+        norms[dim] = en[dim] - st[dim] 
+   
+    vals={}
+    rowlist = []
+    for i in range (0,steps):
+        for dim in dimslist: 
+            vals[dim] = st[dim] + (norms[dim] * i/(steps-1))    # the values for each dim = start val + diff by step
+            row = pd.DataFrame(vals)
+        rowlist.append(row)
+
+    contdf = pd.concat(rowlist,ignore_index=True)
+    return contdf
+
+def datasummary(dataset, catslist, dimslist):
+    '''
+    Creates dataframe of mean values grouped by catgories
+    
+    Required parameters: 
+    
+    dataset = A dataframe to be analyzed, where each row is an observation
+        Requires at least one category and one dimension
+        
+    catslist = List of categories to group by. Also accepts string.
+    
+    dimslist = List of dimensions to get values for. Also accepts dict
+        with dimensions as keys.
+    '''
+    # Convert cat to list (e.g. if only one term is given)
+    if type(catslist) != list:
+        catslist = [catslist]
+    # If the weights dictionary is given instead of the dimlist,
+    ## take just the keys as a list
+    if type(dimslist) == dict:
+        dimslist=list(dimslist.keys())
+    
+    # group by categories: cats[0] will be used to group first, then cats[1]
+    # i.e., if cats = ["vowel","type"], vowel1-type1, vowel1-type2, vowel2-type1, vowel2-type2...
+    # get the mean of values for each dimension grouped by categories
+    df = dataset.groupby(catslist,as_index=False)[dimslist].mean()
+    return df
