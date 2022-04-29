@@ -1,5 +1,6 @@
 """
 Created on Wed January 20, 2021
+Last updated April 29, 2022
 @author: Emily Remirez (eremirez@berkeley.edu)
 @version: 0.1
 """
@@ -236,7 +237,7 @@ def probs(bigdf,cats):
     return prs
     
 
-def choose(pr,test,cats,runnerup=False):
+def choose(probsdict,test,runnerup=False,fc=None):
     '''
     Chooses a label for each category which the stimulus will be categorized as.
     Returns the test/stimulus dataframe with added columns showing what was 
@@ -245,21 +246,33 @@ def choose(pr,test,cats,runnerup=False):
     
     Required parameters:
     pr = dictionary of probabilities, given from probs(). Each key should represent
-        a category (e.g. 'vowel'), with values as dictionaries with keys for category
-        labels (e.g. 'i','a','u')
+        a category (e.g. 'vowel'), with values as dataframe. Dataframe should
+        have a probability for each category label
         
     test = single line data frame representing the test/stimulus being categorized
-        
-    cats = a list of strings containing at least one item, indicating which
-        categories probability should be calculated for (e.g. ['vowel','gender']).
-        Items should match the name of columns in the data frame
             
     Optional parameters:
     runnerup = boolean; when true the label with the second highest probability
         will also be included in the dataframe. Defaults to False. 
+        
+    fc = Dict where keys are category names in the dataframe and values are a list of category labels.
+        Used to simulate a forced choice experiment in which the perceiver has a limited number
+        of alternatives. For example, if fc = {'vowel':['i','a']}, the choice will be the alternative 
+        with higher probability, regardless of whether other vowels not listed have higher probabilities. 
+        There can be any number of alternatives in the list.
     
     '''
-    newtest = test.copy()
+    newtest = test.copy()      # make a copy of the test set to add to
+    pr=probsdict.copy()        # make a copy of the probs dict to subset if forced choice is set       
+    cats=probsdict.keys()
+    
+    if fc!=None: 
+        fccats = fc.keys()
+        for fccat in fccats:
+            options = fc[fccat]
+            scope = probsdict[fccat]
+            toconsider = scope.loc[scope[fccat].isin(options)]
+        pr[fccat] = toconsider
 
     for cat in cats:
         choicename = cat + 'Choice'
@@ -280,8 +293,8 @@ def choose(pr,test,cats,runnerup=False):
             choice2 = pr[cat].loc[pr[cat]['probability']==choice2prob,cat].iloc[0]
             newtest[choice2name] = choice2
             newtest[choice2probname] = choice2prob
-            
-    return newtest
+   
+        return newtest
 
 def gettestset(cloud,balcat,n):     #Gets n number of rows per cat in given cattype
     '''
@@ -354,7 +367,7 @@ def categorize(testset,cloud,cats,dims,c,exclude_self=True,alsoexclude=None, N=1
     reset_N(exemplars, N=N)
     bigdf=activation(test,exemplars,dims=dims,c=c)
     pr=probs(bigdf,cats)
-    choices=choose(pr,test,cats,runnerup=runnerup)
+    choices=choose(pr,test,runnerup=runnerup)
     return choices 
     
 def getactiv(activation,x,y,cat):
@@ -424,7 +437,7 @@ def activplot(a,x,y,cat, test):
 
     return pl
 
-def multicat(testset,cloud,cats,dims,c,exclude_self=True,alsoexclude=None, N=1, runnerup=False):
+def multicat(testset,cloud,cats,dims,c,exclude_self=True,alsoexclude=None, N=1, runnerup=False, fc=None):
     '''
     Categorizes a dataframe of multiple stimuli based on functions defined in library. 
     1. Exclude any desired stimuli
@@ -466,6 +479,12 @@ def multicat(testset,cloud,cats,dims,c,exclude_self=True,alsoexclude=None, N=1, 
         
     runnerup = boolean; when true the label with the second highest probability
         will also be included in the dataframe. Defaults to False.
+        
+    fc = Dict where keys are category names in the dataframe and values are a list of category labels.
+        Used to simulate a forced choice experiment in which the perceiver has a limited number
+        of alternatives. For example, if fc = {'vowel':['i','a']}, the choice will be the alternative 
+        with higher probability, regardless of whether other vowels not listed have higher probabilities. 
+        There can be any number of alternatives in the list.
     '''
     
     choicelist=[]
@@ -475,12 +494,12 @@ def multicat(testset,cloud,cats,dims,c,exclude_self=True,alsoexclude=None, N=1, 
         exemplars=reset_N(exemplars,N=N)
         bigdf=activation(test,exemplars,dims = dims,c=c)
         pr=probs(bigdf,cats)
-        choices = choose(pr,test,cats,runnerup=runnerup)
+        choices = choose(pr,test,runnerup=runnerup,fc=fc)
         choicelist.append(choices)
     choices=pd.concat(choicelist, ignore_index=True)
     return choices
 
-def multicatprime(testset,cloud,cats,dims,c,cat,catbias,exclude_self=True,alsoexclude=None):
+def multicatprime(testset,cloud,cats,dims,c,cat,catbias,exclude_self=True,alsoexclude=None,runnerup=False,fc=None):
     '''
     Categorizes a dataframe of multiple stimuli based on functions defined in library, 
     much like multicat(), but rather than assigning one N value, use a dictionary of
@@ -515,7 +534,7 @@ def multicatprime(testset,cloud,cats,dims,c,cat,catbias,exclude_self=True,alsoex
     cat = a string designating the category type which is being primed
     
     catbias = dictionary with categories (e.g. vowels) as keys and N value for the  
-        category as values
+        category as values. Weights N values based on values given.
     
     exclude_self = boolean. If True, stimulus will be removed from exemplar cloud
         so that it isn't compared to itself. Defaults to True 
@@ -530,6 +549,12 @@ def multicatprime(testset,cloud,cats,dims,c,cat,catbias,exclude_self=True,alsoex
         
     runnerup = boolean; when true the label with the second highest probability
         will also be included in the dataframe. Defaults to False.
+        
+    fc = Dict where keys are category names in the dataframe and values are a list of category labels.
+        Used to simulate a forced choice experiment in which the perceiver has a limited number
+        of alternatives. For example, if fc = {'vowel':['i','a']}, the choice will be the alternative 
+        with higher probability, regardless of whether other vowels not listed have higher probabilities. 
+        There can be any number of alternatives in the list. 
     '''
     choicelist=[]
     for ix in list(testset.index.values):
@@ -539,7 +564,7 @@ def multicatprime(testset,cloud,cats,dims,c,cat,catbias,exclude_self=True,alsoex
         exemplars = bias_N(exemplars,cat,catbias)
         bigdf=activation(test,exemplars,dims = dims,c=c)
         pr=probs(bigdf,cats)
-        choices = choose(pr,test,cats)
+        choices = choose(pr,test,runnerup=runnerup,fc=fc)
         choicelist.append(choices)
     choices=pd.concat(choicelist, ignore_index=True)
     return choices
@@ -699,6 +724,7 @@ def continuum (data, start, end, dimslist, steps=7):
     Required parameters:
     
     data = DataFrame, designed to be result of gp.datasummary, with one result
+        per set of features to be used
     
     start = Dictionary indicating properties of the desired start
         with category types as keys, and their desired category as values
@@ -771,3 +797,59 @@ def datasummary(dataset, catslist, dimslist):
     # get the mean of values for each dimension grouped by categories
     df = dataset.groupby(catslist,as_index=False)[dimslist].mean()
     return df
+
+def cpplot(datalist,cat,datanames=None):
+    '''
+    Generates a (cp = categorical perception) plot. On the X axis is the stimulus number,
+    on the Y axis is the proportion of [label] responses with [label] being the label that
+    was assigned to the first stimulus. Designed to be used with stimuli continua
+    
+    Required parameters:
+    
+    datalist = Designed to be output of multicat() or multicatprime(). Dataframe or list of dataframes
+        containing each stimulus, what it was categorized as, and the probability
+    
+    cat = Type of category decision to visualize, e.g., 'vowel'
+    
+    Optional parameters:
+    
+    datanames = List of labels to use for each curve in the plot. Names should be in same
+        order as in datalist
+    '''
+    # Set up some labels
+    if type(datalist) != list:
+        datalist = [datalist]
+    choicename = cat+'Choice'
+    probname = cat+'Prob'
+    # Get the label of the first stimulus
+    stv = datalist[0].loc[0][choicename]
+    
+    def copy(d):
+        d = d
+        return d
+
+    def inv(d):
+        d = 1-d
+        return d
+    
+    # get the inverse of probability if not first value, for each dataset
+    curvelist = []
+    i = 1
+    j = 0
+    for dataset in datalist:
+        if datanames != None:
+            lab = datanames[j]
+        else:
+            lab = "Data " + str(i)
+        dataset['yax'] = dataset.apply(lambda x: copy(x[probname]) if x[choicename]==stv else inv(x[probname]),axis=1)
+        curve = sns.lineplot(x=(dataset.index.values)+1, y="yax", data=dataset, label=lab)
+        i += 1
+        j += 1
+
+    # use the first dataset/plot to set axes and stuff
+    p = curve
+    # Add labels & plot
+    yaxisname = "Proportion " + stv + " Response"
+    p.set_ylabel(yaxisname)
+    p.set_xlabel("Step")
+
