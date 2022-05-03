@@ -45,7 +45,7 @@ def HzToBark(cloud,formants):
     # Return the dataframe with the changes
     return newcloud
 
-def activation(testset,cloud,dims,c=0.01):
+def activation(testset,cloud,dims,c=0.25):
     '''
     Calculate activation for all exemplars stored in the cloud
     with respect to some stimulus, referred to as test. Returns
@@ -63,7 +63,7 @@ def activation(testset,cloud,dims,c=0.01):
     
     dims = a dictionary with dimensions as keys and weights, w, as values. 
     
-    c = an integer representing exemplar sensitivity. Defaults to .01. 
+    c = an integer representing exemplar sensitivity. Defaults to 25. 
         
     '''
     # Get stuff ready                                                   
@@ -237,7 +237,7 @@ def probs(bigdf,cats):
     return prs
     
 
-def choose(probsdict,test,runnerup=False,fc=None):
+def choose(probsdict,test,cats,runnerup=False,fc=None):
     '''
     Chooses a label for each category which the stimulus will be categorized as.
     Returns the test/stimulus dataframe with added columns showing what was 
@@ -250,6 +250,8 @@ def choose(probsdict,test,runnerup=False,fc=None):
         have a probability for each category label
         
     test = single line data frame representing the test/stimulus being categorized
+    
+    cats = list of categories to be considered (e.g., ["vowel"])
             
     Optional parameters:
     runnerup = boolean; when true the label with the second highest probability
@@ -264,7 +266,6 @@ def choose(probsdict,test,runnerup=False,fc=None):
     '''
     newtest = test.copy()      # make a copy of the test set to add to
     pr=probsdict.copy()        # make a copy of the probs dict to subset if forced choice is set       
-    cats=probsdict.keys()
     
     if fc!=None: 
         fccats = fc.keys()
@@ -293,8 +294,8 @@ def choose(probsdict,test,runnerup=False,fc=None):
             choice2 = pr[cat].loc[pr[cat]['probability']==choice2prob,cat].iloc[0]
             newtest[choice2name] = choice2
             newtest[choice2probname] = choice2prob
-   
-        return newtest
+            
+    return newtest
 
 def gettestset(cloud,balcat,n):     #Gets n number of rows per cat in given cattype
     '''
@@ -317,7 +318,7 @@ def gettestset(cloud,balcat,n):     #Gets n number of rows per cat in given catt
     test=pd.concat(testlist)
     return test
 
-def categorize(testset,cloud,cats,dims,c,exclude_self=True,alsoexclude=None, N=1, runnerup=False):
+def categorize(testset,cloud,cats,dims,c,exclude_self=True,alsoexclude=None, N=1, runnerup=False, fc=None):
     '''
     Categorizes a stimulus based on functions defined in library. 
     1. Exclude any desired stimuli
@@ -367,7 +368,7 @@ def categorize(testset,cloud,cats,dims,c,exclude_self=True,alsoexclude=None, N=1
     reset_N(exemplars, N=N)
     bigdf=activation(test,exemplars,dims=dims,c=c)
     pr=probs(bigdf,cats)
-    choices=choose(pr,test,runnerup=runnerup)
+    choices=choose(pr,test,cats,runnerup=runnerup,fc=fc)
     return choices 
     
 def getactiv(activation,x,y,cat):
@@ -391,10 +392,16 @@ def getactiv(activation,x,y,cat):
     cat = String. Category used to color code exemplars in scatter plot. Matches the name
         of a column in the activation DataFrame.
     """
+    
+    
     xname = x + "_ex"
     yname = y + "_ex"
-    catname = cat + "_ex"
     
+    if cat in activation:
+        catname = cat + "_ex"
+    else: 
+        catname = cat
+     
     acts = activation['a']
     xs = activation[xname]
     ys = activation[yname]
@@ -494,7 +501,7 @@ def multicat(testset,cloud,cats,dims,c,exclude_self=True,alsoexclude=None, N=1, 
         exemplars=reset_N(exemplars,N=N)
         bigdf=activation(test,exemplars,dims = dims,c=c)
         pr=probs(bigdf,cats)
-        choices = choose(pr,test,runnerup=runnerup,fc=fc)
+        choices = choose(pr,test,cats,runnerup=runnerup,fc=fc)
         choicelist.append(choices)
     choices=pd.concat(choicelist, ignore_index=True)
     return choices
@@ -564,14 +571,14 @@ def multicatprime(testset,cloud,cats,dims,c,cat,catbias,exclude_self=True,alsoex
         exemplars = bias_N(exemplars,cat,catbias)
         bigdf=activation(test,exemplars,dims = dims,c=c)
         pr=probs(bigdf,cats)
-        choices = choose(pr,test,runnerup=runnerup,fc=fc)
+        choices = choose(pr,test,cats,runnerup=runnerup,fc=fc)
         choicelist.append(choices)
     choices=pd.concat(choicelist, ignore_index=True)
     return choices
 
 def checkaccuracy(choices,cats):
     '''
-    Check rather the choices made my the model match the 'intended' label for each category.
+    Check rather the choices made by the model match the 'intended' label for each category.
     Returns a copy of the testset dataframe with column added indicating whether the choice for
     each category was correct (y) or incorrect (n)
     
@@ -581,7 +588,7 @@ def checkaccuracy(choices,cats):
         chosen for a category and with what probability.
     
     cats = a list of strings containing at least one item, indicating which
-        categories probability was calculated for (e.g. ['vowel','gender']).
+        category's probability was calculated for (e.g. ['vowel','gender']).
         Items should match the name of columns in the data frame
     '''
     acc = choices.copy()                     # Make a copy of choices to muck around with
@@ -592,6 +599,7 @@ def checkaccuracy(choices,cats):
         
         # If choice is the same as intended, acc =y, else n
         acc[accname] = np.where(acc[cat]==acc[choicename], 'y', 'n')      
+    
     return acc
 
 def propcorr(acc,cat):
@@ -674,6 +682,9 @@ def confusion(choices,cats):
         categories probability was calculated for (e.g. ['vowel','gender']).
         Items should match the name of columns in the data frame
     '''
+    if type(cats) != list:
+        cats = [cats]
+    
     matrices={}
     for cat in cats:
         matrices[cat]=pd.crosstab(choices[cat],choices[cat+'Choice'], normalize='index').round(2).rename_axis(None)
@@ -845,8 +856,9 @@ def cpplot(datalist,cat,datanames=None):
         curve = sns.lineplot(x=(dataset.index.values)+1, y="yax", data=dataset, label=lab)
         i += 1
         j += 1
+        dataset.drop('yax', axis=1, inplace=True)
 
-    # use the first dataset/plot to set axes and stuff
+    # use the last dataset/plot to set axes and stuff
     p = curve
     # Add labels & plot
     yaxisname = "Proportion " + stv + " Response"
