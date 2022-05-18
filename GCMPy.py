@@ -1,6 +1,6 @@
 """
 Created on Wed January 20, 2021
-Last updated April 29, 2022
+Last updated May 17, 2022
 @author: Emily Remirez (eremirez@berkeley.edu)
 @version: 0.1
 """
@@ -591,6 +591,9 @@ def checkaccuracy(choices,cats):
         category's probability was calculated for (e.g. ['vowel','gender']).
         Items should match the name of columns in the data frame
     '''
+    if type(cats) != list:
+        cats = [cats]
+    
     acc = choices.copy()                     # Make a copy of choices to muck around with
     
     for cat in cats:                     # Iterate over your list of cats
@@ -727,18 +730,24 @@ def errorfunc(x, testset, cloud, dimslist, cat):
     err = accuracy[cat+'Acc'].value_counts(normalize=True)['n']
     return err
 
-def continuum (data, start, end, dimslist, steps=7):
+def continuum (data, start, end, dimslist, steps=7, stimdetails=False):
     '''
     Returns a continuum dataframe with interpolated values
     from a start to end value with a given number of steps
+    * Users should be sure to specify any and all parameters they want
+    start and end to match for. That is, say there are 2 repetitions of
+    a stimulus. If it doesn't matter whether start and end are from the same
+    repetition, you do not need to specify repetition number; one row will
+    be chosen randomly. If it *does* matter that they're the same repetition,
+    be sure to include repetition number in the dictionary.
     
     Required parameters:
     
-    data = DataFrame, designed to be result of gp.datasummary, with one result
-        per set of features to be used
+    data = DataFrame to draw start and end stimuli from
     
     start = Dictionary indicating properties of the desired start
-        with category types as keys, and their desired category as values
+        with category types as keys, and their desired category as values.
+        e.g., {"vowel":"i","speaker"="LB"}
     
     end = Dictionary indicating properties of the desired start
         with category types as keys, and their desired category as values
@@ -748,23 +757,37 @@ def continuum (data, start, end, dimslist, steps=7):
     Optional parameters: 
     
     steps = integer indicating the total number of continuum steps. Defaults to 7.
+    
+    stimdetails = Boolean, defaults to False. Debugging/auditing tool to
+        get details of the stimulus that aren't preserved in the returned
+        dataframe (e.g., speaker ID)
     '''
     # create a copy of the entire df to subset according to conditions
     # match category to value from dictionary, subset
     # repeat subsetting until all conditions are satisfied
-    st=data
+    st=data.copy()
     for i in range(0,len(start)):
         cat = list(start.keys())[i]
         val = list(start.values())[i]
         condition = st[cat]==val
-        st = st.loc[condition].reset_index()
-
-    en=data
+        st = st.loc[condition]
+    # reset index has to be outside of the loop to work with >2 conditions
+    # sample(1) is there to just pick an observation if the conditions don't point
+    ## a unique row in the dataframe
+    st = st.sample(1).reset_index()
+    
+    en=data.copy()
     for i in range(0,len(end)):
         cat = list(end.keys())[i]
         val = list(end.values())[i]
         condition = en[cat]==val
-        en = pd.DataFrame(en.loc[condition]).reset_index()
+        en = pd.DataFrame(en.loc[condition])
+    en = en.sample(1).reset_index()
+    
+    # remember start & end values if needed
+    if stimdetails == True:
+        print("Start: " , st.iloc[0])
+        print("End: " , en.iloc[0])
     
     norms = {}
     for dim in dimslist:                      # Calculate the difference between start and end for each dim
@@ -779,6 +802,7 @@ def continuum (data, start, end, dimslist, steps=7):
         rowlist.append(row)
 
     contdf = pd.concat(rowlist,ignore_index=True)
+    
     return contdf
 
 def datasummary(dataset, catslist, dimslist):
@@ -809,7 +833,7 @@ def datasummary(dataset, catslist, dimslist):
     df = dataset.groupby(catslist,as_index=False)[dimslist].mean()
     return df
 
-def cpplot(datalist,cat,datanames=None):
+def cpplot(datalist,cat,datanames=None, plot50=True):
     '''
     Generates a (cp = categorical perception) plot. On the X axis is the stimulus number,
     on the Y axis is the proportion of [label] responses with [label] being the label that
@@ -826,6 +850,9 @@ def cpplot(datalist,cat,datanames=None):
     
     datanames = List of labels to use for each curve in the plot. Names should be in same
         order as in datalist
+        
+    plot50 = Boolean indicating whether a dashed line is added at 0.5 to aid in assessing
+        boundaries in categorical perception. Defaults to true. 
     '''
     # Set up some labels
     if type(datalist) != list:
@@ -864,4 +891,9 @@ def cpplot(datalist,cat,datanames=None):
     yaxisname = "Proportion " + stv + " Response"
     p.set_ylabel(yaxisname)
     p.set_xlabel("Step")
+    
+    if plot50 == True:
+        plt.axhline(y=0.5, color='gray', linestyle=':')
+    
+    plt.show()
 
