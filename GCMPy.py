@@ -510,16 +510,16 @@ def multicat(testset,cloud,cats,dims,c=25,N=1,biascat=None,catbias=None,rescat=N
         test = testset.loc[[ix,]]
         
         # exclusions
-        exemplars=gp.exclude(cloud,test,exclude_self=exclude_self,alsoexclude=alsoexclude)
+        exemplars=exclude(cloud,test,exclude_self=exclude_self,alsoexclude=alsoexclude)
         
         #add N 
         if catbias != None: 
-            exemplars = gp.bias_N(exemplars,biascat,catbias)
+            exemplars = bias_N(exemplars,biascat,catbias)
         else: exemplars = gp.reset_N(exemplars, N=N)
         
         # calculate probabilities
-        bigdf=gp.activation(test,exemplars,dims = dims,c=c)
-        pr=gp.probs(bigdf,cats)
+        bigdf=activation(test,exemplars,dims = dims,c=c)
+        pr=probs(bigdf,cats)
         
         # resonate if applicable -- recalculate probs based on a resonance term
         if rescat != None:
@@ -530,11 +530,11 @@ def multicat(testset,cloud,cats,dims,c=25,N=1,biascat=None,catbias=None,rescat=N
                 exemplars['resterm'] = exemplars[rescat].map(edict) / (n+1)
                 # Add resterm to N value; N only ever goes up
                 exemplars['N'] = exemplars['N'] + exemplars['resterm']
-                bigdf=gp.activation(test,exemplars,dims = dims,c=c)
-                pr=gp.probs(bigdf,cats)
+                bigdf=activation(test,exemplars,dims = dims,c=c)
+                pr=probs(bigdf,cats)
         
         # Luce's choice rule
-        choices = gp.choose(pr,test,cats,runnerup=runnerup,fc=fc)
+        choices = choose(pr,test,cats,runnerup=runnerup,fc=fc)
         
         choicelist.append(choices)
     choices=pd.concat(choicelist, ignore_index=True)
