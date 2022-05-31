@@ -45,7 +45,7 @@ def HzToBark(cloud,formants):
     # Return the dataframe with the changes
     return newcloud
 
-def activation(testset,cloud,dims,c=0.25):
+def activation(testset,cloud,dims,c=25):
     '''
     Calculate activation for all exemplars stored in the cloud
     with respect to some stimulus, referred to as test. Returns
@@ -132,11 +132,6 @@ def exclude(cloud, test, exclude_self=True, alsoexclude=None):
     
     
     '''
-    # cloud = exemplars, dataframe
-    # test = exemplar to be categorized
-    # exclude_self = true or false, should the exemplar not be compared to itself? default true
-    # exclude = a list of columns in cloud to also exclude
-    
     # Make a copy of the cloud and call it exemplars. 
     #    This is what we'll return at the end
     exemplars = cloud.copy()
@@ -217,6 +212,9 @@ def probs(bigdf,cats):
         Items should match the name of columns in the data frame
     '''
     prs = {}
+    
+    if type(cats) != list:
+        cats = [cats]
     
     # Loop over every category in the list of categories
     for cat in cats: 
@@ -444,9 +442,10 @@ def activplot(a,x,y,cat, test):
 
     return pl
 
-def multicat(testset,cloud,cats,dims,c,exclude_self=True,alsoexclude=None, N=1, runnerup=False, fc=None):
+def multicat(testset,cloud,cats,dims,c=25,N=1,biascat=None,catbias=None,rescat=None, ncyc= None, exclude_self=True,alsoexclude=None,runnerup=False,fc=None):
     '''
-    Categorizes a dataframe of multiple stimuli based on functions defined in library. 
+    Categorizes a dataframe of 1 or more stimuli based on functions defined in library
+    
     1. Exclude any desired stimuli
     2. Add N value
     3. Calculate activation
@@ -471,82 +470,23 @@ def multicat(testset,cloud,cats,dims,c,exclude_self=True,alsoexclude=None, N=1, 
         
     dims = a dictionary with dimensions as keys and weights, w, as values. 
     
-    c = an integer representing exemplar sensitivity. Defaults to .01. 
+    c = an integer representing exemplar sensitivity. Defaults to 25. 
     
     exclude_self = boolean. If True, stimulus will be removed from exemplar cloud
         so that it isn't compared to itself. Defaults to True 
         
     Optional parameters:
-    alsoexclude = a list of strings matching columns in the cloud (categories) to exclude 
-        if value is the same as that of the test. (E.g., to exclude all exemplars from
-        the speaker to simulate categorization of novel speaker)
     
-    N = integer indicating the base activation value to be added to
-        each exemplar (row) in the dataframe. Defaults to 1
-        
-    runnerup = boolean; when true the label with the second highest probability
-        will also be included in the dataframe. Defaults to False.
-        
-    fc = Dict where keys are category names in the dataframe and values are a list of category labels.
-        Used to simulate a forced choice experiment in which the perceiver has a limited number
-        of alternatives. For example, if fc = {'vowel':['i','a']}, the choice will be the alternative 
-        with higher probability, regardless of whether other vowels not listed have higher probabilities. 
-        There can be any number of alternatives in the list.
-    '''
+    biascat = A string indicating the category type to be biased or primed on (e.g. 'vowel', 'speaker')
     
-    choicelist=[]
-    for ix in list(testset.index.values):
-        test = testset.loc[[ix,]]
-        exemplars=exclude(cloud,test,exclude_self=exclude_self,alsoexclude=alsoexclude)
-        exemplars=reset_N(exemplars,N=N)
-        bigdf=activation(test,exemplars,dims = dims,c=c)
-        pr=probs(bigdf,cats)
-        choices = choose(pr,test,cats,runnerup=runnerup,fc=fc)
-        choicelist.append(choices)
-    choices=pd.concat(choicelist, ignore_index=True)
-    return choices
-
-def multicatprime(testset,cloud,cats,dims,c,cat,catbias,exclude_self=True,alsoexclude=None,runnerup=False,fc=None):
-    '''
-    Categorizes a dataframe of multiple stimuli based on functions defined in library, 
-    much like multicat(), but rather than assigning one N value, use a dictionary of
-    category biases to assign N based on category membership.
+    catbias = Dict where keys are categories of biascat and values are
+        ints that indicate relative N values. (e.g., {'i':5,'a':1} would make every 'i' exemplar 
+        contribute 5 times as much activation as each 'a)
     
-    1. Exclude any desired stimuli
-    2. Add N value according to cat biases 
-    3. Calculate activation
-    4. Calculate probabilities
-    5. Choose labels for each category
-    Returns the output of choose(): test/stimulus dataframe with added columns showing what was 
-    chosen for a category and with what probability
+    rescat = Category to resonate on. If given, 
     
-    Required parameters:
+    ncyc = Int indicating how many cycles of resonance
     
-    testset = a dataframe with one or more rows, each a stimulus to be categorized
-        must have columns matching those given in the 'dims' dict. These columns
-        should be dimensions of the stimulus (e.g., formants)
-        
-    cloud = A dataframe of stored exemplars which every stimulus is compared to. 
-        Each row is an exemplar, which, like testset should have columns matching
-        those in the dims dict
-        
-    cats = a list of strings containing at least one item, indicating which
-        categories probability should be calculated for (e.g. ['vowel','gender']).
-        Items should match the name of columns in the data frame
-        
-    dims = a dictionary with dimensions as keys and weights, w, as values. 
-    
-    c = an integer representing exemplar sensitivity. Defaults to .01. 
-    
-    cat = a string designating the category type which is being primed
-    
-    catbias = dictionary with categories (e.g. vowels) as keys and N value for the  
-        category as values. Weights N values based on values given.
-    
-    exclude_self = boolean. If True, stimulus will be removed from exemplar cloud
-        so that it isn't compared to itself. Defaults to True 
-        
-    Optional parameters:
     alsoexclude = a list of strings matching columns in the cloud (categories) to exclude 
         if value is the same as that of the test. (E.g., to exclude all exemplars from
         the speaker to simulate categorization of novel speaker)
@@ -563,15 +503,39 @@ def multicatprime(testset,cloud,cats,dims,c,cat,catbias,exclude_self=True,alsoex
         with higher probability, regardless of whether other vowels not listed have higher probabilities. 
         There can be any number of alternatives in the list. 
     '''
+    
+    
     choicelist=[]
     for ix in list(testset.index.values):
         test = testset.loc[[ix,]]
-        exemplars=exclude(cloud,test,exclude_self=exclude_self,alsoexclude=alsoexclude)
-        # unlike multicat, which uses reset_N, here use bias_N 
-        exemplars = bias_N(exemplars,cat,catbias)
-        bigdf=activation(test,exemplars,dims = dims,c=c)
-        pr=probs(bigdf,cats)
-        choices = choose(pr,test,cats,runnerup=runnerup,fc=fc)
+        
+        # exclusions
+        exemplars=gp.exclude(cloud,test,exclude_self=exclude_self,alsoexclude=alsoexclude)
+        
+        #add N 
+        if catbias != None: 
+            exemplars = gp.bias_N(exemplars,biascat,catbias)
+        else: exemplars = gp.reset_N(exemplars, N=N)
+        
+        # calculate probabilities
+        bigdf=gp.activation(test,exemplars,dims = dims,c=c)
+        pr=gp.probs(bigdf,cats)
+        
+        # resonate if applicable -- recalculate probs based on a resonance term
+        if rescat != None:
+            for n in range(0,ncyc):
+                edict = pr[rescat].set_index(rescat).to_dict()['probability']
+                # resonance term = probability of category divided by number of cycles
+                    ## so that effect decays over time
+                exemplars['resterm'] = exemplars[rescat].map(edict) / (n+1)
+                # Add resterm to N value; N only ever goes up
+                exemplars['N'] = exemplars['N'] + exemplars['resterm']
+                bigdf=gp.activation(test,exemplars,dims = dims,c=c)
+                pr=gp.probs(bigdf,cats)
+        
+        # Luce's choice rule
+        choices = gp.choose(pr,test,cats,runnerup=runnerup,fc=fc)
+        
         choicelist.append(choices)
     choices=pd.concat(choicelist, ignore_index=True)
     return choices
