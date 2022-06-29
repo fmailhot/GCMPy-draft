@@ -4,8 +4,10 @@ Last updated May 17, 2022
 @author: Emily Remirez (eremirez@berkeley.edu)
 @version: 0.1
 """
+# std lib
 import math
 import random
+# 3rd-party libs
 import matplotlib.pyplot as plt
 #%matplotlib inline
 import numpy as np
@@ -16,34 +18,8 @@ import seaborn as sns
 sns.set(style='ticks', context='paper')
 colors=["#e3c934","#68c4bf","#c51000","#287271"]
 sns.set_palette(colors)
-
-
-def HzToBark(cloud,formants):
-    '''
-    Convert selected columns from Hz to Bark scale. Renames the formants as z.
-    Returns the data frame with additional columns: the value of the formant
-    converted from Hz to Bark
-    
-    Required parameters:
-    
-    cloud = dataframe of exemplars 
-    
-    formants = list of formants to be converted 
-    '''
-    # Make a copy of the cloud
-    newcloud=cloud.copy()
-    
-    # For each formant listed, make a copy of the column prefixed with z
-    for formant in formants:
-        for ch in formant:
-            if ch.isnumeric():
-                num=ch
-        formantchar = (formant.split(num)[0])
-        name = str(formant).replace(formantchar,'z')
-        # Convert each value from Hz to Bark
-        newcloud[name] = 26.81/ (1+ 1960/newcloud[formant]) - 0.53
-    # Return the dataframe with the changes
-    return newcloud
+# local imports
+from GCMPy_utils import HzToBark
 
 
 def activation(testset,cloud,dims,c=25):
@@ -877,7 +853,7 @@ def cpplot(datalist,cat,datanames=None, plot50=True):
 if __name__ == '__main__':
     # load Peterson/Barney vowels and convert to Bark
     print('loading data')
-    pb52=pd.read_csv('data/pb52.csv')
+    pb52 = pd.read_csv('data/pb52.csv')
     pbbark = HzToBark(pb52, ['F0','F1','F2','F3'])
     pbbark.sample(5).head()
 
@@ -886,7 +862,7 @@ if __name__ == '__main__':
     cval=5
     # set dimesnsions m as keys, 
         ## set weight of each dimension w_m as values
-    dimsvals={'z0':1,'z1':2.953,'z2':.924,'z3':3.420}
+    dimsvals = {'z0':1,'z1':2.953,'z2':.924,'z3':3.420}
     # set categories to be considered as items in a list
     catslist=['vowel','type']
 
@@ -896,7 +872,8 @@ if __name__ == '__main__':
 
     print('categorize testset & check accuracy')
     # categorize testset
-    choices = multicat(test,pbbark,catslist,dimsvals,cval,exclude_self=True,alsoexclude=None, N=1, runnerup=False)
+    choices = multicat(test, pbbark, catslist, dimsvals, cval, exclude_self=True,
+                       alsoexclude=None, N=1, runnerup=False)
     # check accuracy
     acc = checkaccuracy(choices,catslist)
     print("overall accuracy: " + str(overallacc(acc,'vowel')))
