@@ -4,7 +4,6 @@ Last updated May 17, 2022
 @author: Emily Remirez (eremirez@berkeley.edu)
 @version: 0.1
 """
-
 import math
 import random
 import matplotlib.pyplot as plt
@@ -17,6 +16,7 @@ import seaborn as sns
 sns.set(style='ticks', context='paper')
 colors=["#e3c934","#68c4bf","#c51000","#287271"]
 sns.set_palette(colors)
+
 
 def HzToBark(cloud,formants):
     '''
@@ -44,6 +44,7 @@ def HzToBark(cloud,formants):
         newcloud[name] = 26.81/ (1+ 1960/newcloud[formant]) - 0.53
     # Return the dataframe with the changes
     return newcloud
+
 
 def activation(testset,cloud,dims,c=25):
     '''
@@ -148,6 +149,7 @@ def exclude(cloud, test, exclude_self=True, alsoexclude=None):
         
     return exemplars
 
+
 def reset_N(exemplars, N=1):      # Add or override N, default to 1
     '''
     Adds an N (base activation) column to the exemplar cloud so
@@ -166,6 +168,7 @@ def reset_N(exemplars, N=1):      # Add or override N, default to 1
     extemp = exemplars.copy()
     extemp['N'] = N
     return extemp
+
 
 def bias_N(exemplars, cat, catbias):
     '''
@@ -295,6 +298,7 @@ def choose(probsdict,test,cats,runnerup=False,fc=None):
             
     return newtest
 
+
 def gettestset(cloud,balcat,n):     #Gets n number of rows per cat in given cattype
     '''
     Gets a random test set of stimuli to be categorized balanced across a particular
@@ -315,6 +319,7 @@ def gettestset(cloud,balcat,n):     #Gets n number of rows per cat in given catt
         testlist.append(samp)
     test=pd.concat(testlist)
     return test
+
 
 def categorize(testset,cloud,cats,dims,c,exclude_self=True,alsoexclude=None, N=1, runnerup=False, fc=None):
     '''
@@ -368,7 +373,8 @@ def categorize(testset,cloud,cats,dims,c,exclude_self=True,alsoexclude=None, N=1
     pr=probs(bigdf,cats)
     choices=choose(pr,test,cats,runnerup=runnerup,fc=fc)
     return choices 
-    
+
+
 def getactiv(activation,x,y,cat):
     
     """ 
@@ -410,6 +416,7 @@ def getactiv(activation,x,y,cat):
     
     return activ
 
+
 def activplot(a,x,y,cat, test):
     """
     Plots each exemplar in x,y space according to specified dimensions. Labels within
@@ -441,6 +448,7 @@ def activplot(a,x,y,cat, test):
     pl.invert_yaxis()
 
     return pl
+
 
 def multicat(testset,cloud,cats,dims,c=25,N=1,biascat=None,catbias=None,rescat=None, ncyc= None, exclude_self=True,alsoexclude=None,runnerup=False,fc=None):
     '''
@@ -503,8 +511,6 @@ def multicat(testset,cloud,cats,dims,c=25,N=1,biascat=None,catbias=None,rescat=N
         with higher probability, regardless of whether other vowels not listed have higher probabilities. 
         There can be any number of alternatives in the list. 
     '''
-    
-    
     choicelist=[]
     for ix in list(testset.index.values):
         test = testset.loc[[ix,]]
@@ -540,6 +546,7 @@ def multicat(testset,cloud,cats,dims,c=25,N=1,biascat=None,catbias=None,rescat=N
     choices=pd.concat(choicelist, ignore_index=True)
     return choices
 
+
 def checkaccuracy(choices,cats):
     '''
     Check rather the choices made by the model match the 'intended' label for each category.
@@ -564,10 +571,11 @@ def checkaccuracy(choices,cats):
         accname = cat + 'Acc'            # Get the right column names
         choicename = cat + 'Choice'
         
-        # If choice is the same as intended, acc =y, else n
+        # If choice is the same as intended, acc=y, else n
         acc[accname] = np.where(acc[cat]==acc[choicename], 'y', 'n')      
     
     return acc
+
 
 def propcorr(acc,cat):
     '''
@@ -587,6 +595,7 @@ def propcorr(acc,cat):
     pc.columns=[cat,'propcorr']
     return pc
 
+
 def overallacc(acc,cat):
     '''
     Calculates accuracy for categorization overall, across all labels. Returns a 
@@ -603,6 +612,7 @@ def overallacc(acc,cat):
     
     totalcorrect = acc[cat+'Acc'].value_counts(normalize=True)['y']
     return totalcorrect
+
 
 def accplot(acc,cat):
     '''
@@ -657,6 +667,7 @@ def confusion(choices,cats):
         matrices[cat]=pd.crosstab(choices[cat],choices[cat+'Choice'], normalize='index').round(2).rename_axis(None)
     return matrices
 
+
 def errorfunc(x, testset, cloud, dimslist, cat):
     ''' 
     Returns a proportion representing the total amount of error for a single category that
@@ -682,8 +693,6 @@ def errorfunc(x, testset, cloud, dimslist, cat):
         and along which exemplars should be compared.
     
     cat = the category, 
-        
-    
     '''
     #x = [c,z1,z2,z3]
     catlist=[cat]
@@ -693,6 +702,7 @@ def errorfunc(x, testset, cloud, dimslist, cat):
     accuracy=checkaccuracy(choices,catlist)
     err = accuracy[cat+'Acc'].value_counts(normalize=True)['n']
     return err
+
 
 def continuum (data, start, end, dimslist, steps=7, stimdetails=False):
     '''
@@ -752,11 +762,11 @@ def continuum (data, start, end, dimslist, steps=7, stimdetails=False):
     if stimdetails == True:
         print("Start: " , st.iloc[0])
         print("End: " , en.iloc[0])
-    
+
     norms = {}
     for dim in dimslist:                      # Calculate the difference between start and end for each dim
         norms[dim] = en[dim] - st[dim] 
-   
+
     vals={}
     rowlist = []
     for i in range (0,steps):
@@ -766,8 +776,9 @@ def continuum (data, start, end, dimslist, steps=7, stimdetails=False):
         rowlist.append(row)
 
     contdf = pd.concat(rowlist,ignore_index=True)
-    
+
     return contdf
+
 
 def datasummary(dataset, catslist, dimslist):
     '''
@@ -790,12 +801,13 @@ def datasummary(dataset, catslist, dimslist):
     ## take just the keys as a list
     if type(dimslist) == dict:
         dimslist=list(dimslist.keys())
-    
+
     # group by categories: cats[0] will be used to group first, then cats[1]
     # i.e., if cats = ["vowel","type"], vowel1-type1, vowel1-type2, vowel2-type1, vowel2-type2...
     # get the mean of values for each dimension grouped by categories
     df = dataset.groupby(catslist,as_index=False)[dimslist].mean()
     return df
+
 
 def cpplot(datalist,cat,datanames=None, plot50=True):
     '''
@@ -861,3 +873,28 @@ def cpplot(datalist,cat,datanames=None, plot50=True):
     
     plt.show()
 
+
+if __name__ == '__main__':
+    # load Peterson/Barney vowels and convert to Bark
+    pb52=pd.read_csv('pb52.csv')
+    pbbark = gp.HzToBark(pb52, 'F0','F1','F2','F3'])
+    pbbark.sample(5).head()
+
+    # set c, the sensitivity of exemplar cloud
+    cval=5
+
+    # set dimesnsions m as keys, 
+        ## set weight of each dimension w_m as values
+    dimsvals={'z0':1,'z1':2.953,'z2':.924,'z3':3.420}
+
+    # set categories to be considered as items in a list
+    catslist=['vowel','type']
+
+    # Get a balanced test set, 50 obs per vowel
+    test = gp.gettestset(pbbark,'vowel',50)
+
+    # categorize testset
+    choices = gp.multicat(test,pbbark,catslist,dimsvals,cval,exclude_self=True,alsoexclude=None, N=1, runnerup=False)
+    # check accuracy
+    acc = gp.checkaccuracy(choices,catslist)
+    print("overall accuracy: " + str(gp.overallacc(acc,'vowel')))
