@@ -4,15 +4,8 @@ Last updated May 17, 2022
 @author: Emily Remirez (eremirez@berkeley.edu)
 @version: 0.1
 """
-# std lib
-import math
-import random
-# 3rd-party libs
 import numpy as np
 import pandas as pd
-from pandas import DataFrame
-from scipy.optimize import minimize
-# local imports
 from GCMPy_utils import HzToBark, checkaccuracy, overallacc
 from GCMPy_viz import activplot, accplot, cpplot
 
