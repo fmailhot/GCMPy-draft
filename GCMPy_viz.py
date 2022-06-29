@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 sns.set(style='ticks', context='paper')
 colors=["#e3c934","#68c4bf","#c51000","#287271"]
@@ -116,7 +117,8 @@ def cpplot(datalist,cat,datanames=None, plot50=True):
             lab = datanames[j]
         else:
             lab = "Data " + str(i)
-        dataset['yax'] = dataset.apply(lambda x: copy(x[probname]) if x[choicename]==stv else inv(x[probname]),axis=1)
+        dataset['yax'] = dataset.apply(lambda x: copy(x[probname]) if
+                                       x[choicename]==stv else inv(x[probname]),axis=1)
         curve = sns.lineplot(x=(dataset.index.values)+1, y="yax", data=dataset, label=lab)
         i += 1
         j += 1
