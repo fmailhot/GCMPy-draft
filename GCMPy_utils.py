@@ -23,6 +23,28 @@ def HzToBark(df_cloud, formant_cols):
     return df_cloud
 
 
+def get_testset(cloud, balcat, n_catstim):
+    '''
+    Gets a random test set of stimuli to be categorized balanced across a particular
+    category, e.g., 5 instances of each label 'i', 'a', 'u' for category 'vowel'. 
+    Returns a data frame of stimuli.
+
+    Required parameters:
+
+    cloud = dataframe of exemplars
+
+    balcat = category stimuli should be balanced across 
+
+    n = number of stimuli per category label to be included
+    '''
+    testlist=[]
+    for cat in list(cloud[balcat].unique()):
+        samp = cloud[cloud[balcat]==cat].sample(n_catstim)
+        testlist.append(samp)
+    test=pd.concat(testlist)
+    return test
+
+
 def datasummary(dataset, catslist, dimslist):
     '''
     Creates dataframe of mean values grouped by catgories

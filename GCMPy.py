@@ -6,7 +6,7 @@ Last updated May 17, 2022
 """
 import numpy as np
 import pandas as pd
-from GCMPy_utils import HzToBark, checkaccuracy, overallacc
+from GCMPy_utils import HzToBark, checkaccuracy, overallacc, get_testset
 from GCMPy_viz import activplot, accplot, cpplot
 
 
@@ -31,8 +31,9 @@ def activation(testset,cloud,dims,c=25):
     c = an integer representing exemplar sensitivity. Defaults to 25. 
         
     '''
-    # Get stuff ready                                                   
-    dims.update((x, (y/sum(dims.values()))) for x, y in dims.items())   # Normalize weights to sum to 1
+    # Get stuff ready
+    # (Normalize weights to sum to 1)
+    dims.update((x, (y/sum(dims.values()))) for x, y in dims.items())
     
     # If the testset happens to have N in it, remove it before joining dfs 
     test=testset.copy()
@@ -261,28 +262,6 @@ def choose(probsdict,test,cats,runnerup=False,fc=None):
             newtest[choice2probname] = choice2prob
             
     return newtest
-
-
-def gettestset(cloud,balcat,n):     #Gets n number of rows per cat in given cattype
-    '''
-    Gets a random test set of stimuli to be categorized balanced across a particular
-    category, e.g., 5 instances of each label 'i','a', 'u' for category 'vowel'. 
-    Returns a data frame of stimuli.
-    
-    Required parameters:
-    
-    cloud = dataframe of exemplars
-        
-    balcat = category stimuli should be balanced across 
-        
-    n = number of stimuli per category label to be included
-    '''
-    testlist=[]
-    for cat in list(cloud[balcat].unique()):
-        samp = cloud[cloud[balcat]==cat].sample(n)
-        testlist.append(samp)
-    test=pd.concat(testlist)
-    return test
 
 
 def categorize(testset, cloud, cats, dims, c,
@@ -520,7 +499,7 @@ if __name__ == '__main__':
     pbbark = HzToBark(pb52, ['F0','F1','F2','F3'])
     print(pbbark.sample(5).head())
     # Get a balanced test set, 50 obs per vowel
-    test = gettestset(pbbark, 'vowel', 50)
+    test = get_testset(pbbark, 'vowel', 50)
 
     print('set GCM params, categorize testset & check accuracy')
     # set c, the sensitivity of exemplar cloud
