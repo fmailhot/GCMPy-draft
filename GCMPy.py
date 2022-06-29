@@ -521,7 +521,7 @@ def multicat(testset,cloud,cats,dims,c=25,N=1,biascat=None,catbias=None,rescat=N
         #add N 
         if catbias != None: 
             exemplars = bias_N(exemplars,biascat,catbias)
-        else: exemplars = gp.reset_N(exemplars, N=N)
+        else: exemplars = reset_N(exemplars, N=N)
         
         # calculate probabilities
         bigdf=activation(test,exemplars,dims = dims,c=c)
@@ -876,25 +876,27 @@ def cpplot(datalist,cat,datanames=None, plot50=True):
 
 if __name__ == '__main__':
     # load Peterson/Barney vowels and convert to Bark
-    pb52=pd.read_csv('pb52.csv')
-    pbbark = gp.HzToBark(pb52, 'F0','F1','F2','F3'])
+    print('loading data')
+    pb52=pd.read_csv('data/pb52.csv')
+    pbbark = HzToBark(pb52, ['F0','F1','F2','F3'])
     pbbark.sample(5).head()
 
+    print('setting GCM params')
     # set c, the sensitivity of exemplar cloud
     cval=5
-
     # set dimesnsions m as keys, 
         ## set weight of each dimension w_m as values
     dimsvals={'z0':1,'z1':2.953,'z2':.924,'z3':3.420}
-
     # set categories to be considered as items in a list
     catslist=['vowel','type']
 
+    print('creating testset')
     # Get a balanced test set, 50 obs per vowel
-    test = gp.gettestset(pbbark,'vowel',50)
+    test = gettestset(pbbark,'vowel',50)
 
+    print('categorize testset & check accuracy')
     # categorize testset
-    choices = gp.multicat(test,pbbark,catslist,dimsvals,cval,exclude_self=True,alsoexclude=None, N=1, runnerup=False)
+    choices = multicat(test,pbbark,catslist,dimsvals,cval,exclude_self=True,alsoexclude=None, N=1, runnerup=False)
     # check accuracy
-    acc = gp.checkaccuracy(choices,catslist)
-    print("overall accuracy: " + str(gp.overallacc(acc,'vowel')))
+    acc = checkaccuracy(choices,catslist)
+    print("overall accuracy: " + str(overallacc(acc,'vowel')))
