@@ -45,7 +45,7 @@ def get_testset(cloud, balcat, n_catstim):
     return test
 
 
-def datasummary(dataset, catslist, dimslist):
+def data_summary(dataset, catslist, dimslist):
     '''
     Creates dataframe of mean values grouped by catgories
     
@@ -74,7 +74,7 @@ def datasummary(dataset, catslist, dimslist):
     return df
 
 
-def continuum (data, start, end, dimslist, steps=7, stimdetails=False):
+def continuum(data, start, end, dimslist, steps=7, stimdetails=False):
     '''
     Returns a continuum dataframe with interpolated values
     from a start to end value with a given number of steps
@@ -134,14 +134,16 @@ def continuum (data, start, end, dimslist, steps=7, stimdetails=False):
         print("End: " , en.iloc[0])
 
     norms = {}
-    for dim in dimslist:                      # Calculate the difference between start and end for each dim
+    # Calculate the difference between start and end for each dim
+    for dim in dimslist:
         norms[dim] = en[dim] - st[dim] 
 
     vals={}
     rowlist = []
     for i in range (0,steps):
-        for dim in dimslist: 
-            vals[dim] = st[dim] + (norms[dim] * i/(steps-1))    # the values for each dim = start val + diff by step
+        for dim in dimslist:
+            # the values for each dim = start val + diff by step
+            vals[dim] = st[dim] + (norms[dim] * i/(steps-1))
             row = pd.DataFrame(vals)
         rowlist.append(row)
 
@@ -150,8 +152,7 @@ def continuum (data, start, end, dimslist, steps=7, stimdetails=False):
     return contdf
 
 
-
-def checkaccuracy(choices,cats):
+def check_accuracy(choices,cats):
     '''
     Check rather the choices made by the model match the 'intended' label for each category.
     Returns a copy of the testset dataframe with column added indicating whether the choice for
@@ -169,10 +170,13 @@ def checkaccuracy(choices,cats):
     if type(cats) != list:
         cats = [cats]
     
-    acc = choices.copy()                     # Make a copy of choices to muck around with
+    # Make a copy of choices to muck around with
+    acc = choices.copy()
     
-    for cat in cats:                     # Iterate over your list of cats
-        accname = cat + 'Acc'            # Get the right column names
+    # Iterate over your list of cats
+    for cat in cats:
+        # Get the right column names
+        accname = cat + 'Acc'
         choicename = cat + 'Choice'
         
         # If choice is the same as intended, acc=y, else n
@@ -181,7 +185,7 @@ def checkaccuracy(choices,cats):
     return acc
 
 
-def propcorr(acc,cat):
+def prop_corr(acc,cat):
     '''
     Calculates the proportion of stimuli under each label which were categorized correctly
     Returns a dataframe with keys as labels and values as proportions between 0 and 1.
@@ -200,7 +204,7 @@ def propcorr(acc,cat):
     return pc
 
 
-def overallacc(acc,cat):
+def overall_acc(acc,cat):
     '''
     Calculates accuracy for categorization overall, across all labels. Returns a 
     proportion between 0 and 1. 
@@ -224,8 +228,8 @@ def confusion(choices, cats):
     
     Required parameters:
     
-    choices = output of choose() function: the test/stimulus dataframe with added columns showing what was 
-        chosen for a category and with what probability.
+    choices = output of choose() function: the test/stimulus dataframe with added
+        columns showing what was chosen for a category and with what probability.
     
     cats = a list of strings containing at least one item, indicating which
         categories probability was calculated for (e.g. ['vowel','gender']).
@@ -236,5 +240,6 @@ def confusion(choices, cats):
     
     matrices={}
     for cat in cats:
-        matrices[cat]=pd.crosstab(choices[cat],choices[cat+'Choice'], normalize='index').round(2).rename_axis(None)
+        matrices[cat]=pd.crosstab(choices[cat],choices[cat+'Choice'],
+                                  normalize='index').round(2).rename_axis(None)
     return matrices
